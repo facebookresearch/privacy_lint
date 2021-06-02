@@ -122,7 +122,7 @@ def getNoiseMultiplier(epsilon, delta, q, steps):
 def create_privacy_engine(model, params, n_data):
     if params.private:
         if params.noise_multiplier is None:
-            _n_data = n_data if params.privacy_fake_samples is None else params.privacy_fake_samples
+            _n_data = n_data# if params.privacy_fake_samples is None else params.privacy_fake_samples
             sample_rate = params.batch_size / _n_data
             steps = params.epochs * _n_data / params.batch_size
             params.noise_multiplier = getNoiseMultiplier(params.privacy_epsilon, params.privacy_delta, sample_rate, steps)

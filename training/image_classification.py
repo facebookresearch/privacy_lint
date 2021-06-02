@@ -32,6 +32,7 @@ def get_parser():
     # Data parameters
     parser.add_argument("--data_root", type=str, default="data")
     parser.add_argument("--dataset", type=str, choices=["cifar10"], default="cifar10")
+    parser.add_argument("--mask_path", type=str, required=True)
 
     # Model parameters
     parser.add_argument("--architecture", choices=["lenet"], default="lenet")
@@ -47,18 +48,18 @@ def get_parser():
     parser.add_argument("--noise_multiplier", type=float, default=None)
     parser.add_argument("--privacy_epsilon", type=float, default=None)
     parser.add_argument("--privacy_delta", type=float, default=None)
-    parser.add_argument("--privacy_fake_samples", type=int, default=None)
     parser.add_argument("--log_gradients", type=bool_flag, default=False)
+    parser.add_argument("--max_grad_norm", type=float, default=1.0)
 
     return parser
 
 
-def main(params):
-    # Create logger and print params (very useful for debugging)
+def train(params, mask):
+    # Create logger and print params
     logger = create_logger(params)
 
-    trainloader, n_data = get_dataset(params, split='train', is_train=True)
-    validloader, _ = get_dataset(params, split='valid', is_train=False)
+    trainloader, n_data = get_dataset(params=params, is_train=True, mask=mask)
+    validloader, _ = get_dataset(params=params, is_train=False)
 
     model = build_model(params)
     model.cuda()
@@ -107,6 +108,8 @@ def main(params):
         # end of epoch
         trainer.end_epoch(scores)
 
+    return model
+
 
 
 if __name__ == '__main__':
@@ -114,4 +117,5 @@ if __name__ == '__main__':
     params = parser.parse_args()
     check_parameters(params)
 
+    mask = torch.load(params.mask_path)
     main(params)

@@ -17,7 +17,6 @@ def log_grad(trainer, param_name, *args, **kwargs):
         g = kwargs['per_sample_grad']
         trainer.current_grad_sample.append(g.view(g.size(0), -1).clone())
     else:
-        # import ipdb; ipdb.set_trace()
         trainer.current_grad_sample = torch.cat(trainer.current_grad_sample, dim=1)
 
 
@@ -31,13 +30,15 @@ class Trainer:
         self.n_data = n_data
         if params.private and params.privacy_delta is None:
             params.privacy_delta = 1 / n_data
+            print(f"Setting privacy delta to {params.privacy_delta}")
 
         self.privacy_engine = create_privacy_engine(model, params, n_data=n_data)
         self.optimizer, self.schedule = get_optimizer(model.parameters(), params.optimizer, params.epochs)
 
         if self.privacy_engine is not None: 
             self.privacy_engine.attach(self.optimizer)
-            self.privacy_engine.clipper.set_on_batch_clip_func(functools.partial(log_grad, self))
+            if params.log_gradients:
+                self.privacy_engine.clipper.set_on_batch_clip_func(functools.partial(log_grad, self))
             self.current_grad_sample = []
             self.all_grad_samples = None
 

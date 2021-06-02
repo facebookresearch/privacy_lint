@@ -6,6 +6,9 @@ from torch.utils.data import Dataset, TensorDataset
 from .text_data import TextIterator
 
 class IdxDataset(Dataset):
+    """
+    Wraps a dataset so that with each element is also returned its index
+    """
     def __init__(self, dataset: Dataset):
         self.dataset = dataset
 
@@ -22,35 +25,35 @@ class IdxDataset(Dataset):
         return len(self.dataset)
 
 
-# class MaskDataset(Dataset):
-#     def __init__(self, mask: torch.Tensor, dataset: Dataset):
-#         """
-#         example:
-#         mask: [0, 1, 1]
-#         cumul: [-1, 0, 1]
-#         remap: {0: 1, 1: 2}
-#         """
-#         assert mask.dim() == 1
-#         assert mask.size(0) == len(dataset)
-#         assert mask.dtype == bool
+class MaskDataset(Dataset):
+    def __init__(self, dataset: Dataset, mask: torch.Tensor):
+        """
+        example:
+        mask: [0, 1, 1]
+        cumul: [-1, 0, 1]
+        remap: {0: 1, 1: 2}
+        """
+        assert mask.dim() == 1
+        assert mask.size(0) == len(dataset)
+        assert mask.dtype == torch.bool
 
-#         mask = mask.long()
-#         cumul = torch.cumsum(mask) - 1
-#         self.remap = {}
-#         for i in range(mask.size(0)):
-#             if mask[i] == 1:
-#                 self.remap[cumul[i]] = i
-#             assert mask[i] in [0, 1]
+        mask = mask.long()
+        cumul = torch.cumsum(mask, dim=0) - 1
+        self.remap = {}
+        for i in range(mask.size(0)):
+            if mask[i] == 1:
+                self.remap[cumul[i].item()] = i
+            assert mask[i] in [0, 1]
 
-#         self.dataset = dataset
-#         self.mask = mask
-#         self.length = cumul[-1] + 1
+        self.dataset = dataset
+        self.mask = mask
+        self.length = cumul[-1].item() + 1
 
-#     def __getitem__(self, i: int):
-#         return self.dataset[self.remap[i]]
+    def __getitem__(self, i: int):
+        return self.dataset[self.remap[i]]
 
-#     def __len__(self):
-#         return self.length
+    def __len__(self):
+        return self.length
 
 
 def get_transform(dataset):
@@ -62,7 +65,9 @@ def get_transform(dataset):
     return transform
 
 
-def get_dataset(params, split, is_train, mask=None):
+def get_dataset(*, params, is_train, mask=None):
+    if is_train:
+        assert mask is not None
     if params.dataset == "cifar10":
         if is_train:
             transform = get_transform(params.dataset)
@@ -71,6 +76,8 @@ def get_dataset(params, split, is_train, mask=None):
 
         dataset = torchvision.datasets.CIFAR10(root=params.data_root, train=is_train, download=True, transform=transform)
         dataset = IdxDataset(dataset)
+        if mask is not None:
+            dataset = MaskDataset(dataset, mask)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
         n_data = len(dataset)
 
