@@ -49,7 +49,7 @@ class Trainer:
         self.step = 0
         self.stats = OrderedDict(
             [('processed_i', 0)] +
-            [('XE', [])] +
+            [('train_loss', [])] +
             [('time', [])]
         )
 
@@ -202,7 +202,7 @@ class Trainer:
 
         # statistics
         self.stats['processed_i'] += self.params.batch_size
-        self.stats['XE'].append(loss.item())
+        self.stats['train_loss'].append(loss.item())
         self.stats['time'].append(time.time() - start)
 
 
@@ -227,7 +227,7 @@ class Trainer:
 
         # statistics
         self.stats['processed_i'] += self.params.batch_size
-        self.stats['XE'].append(loss.item())
+        self.stats['train_loss'].append(loss.item())
         self.stats['time'].append(time.time() - start)
 
 

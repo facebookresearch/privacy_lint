@@ -72,7 +72,7 @@ def get_dataset(*, params, is_train, mask=None):
         if is_train:
             transform = get_transform(params.dataset)
         else:
-            transform = None
+            transform = get_transform(params.dataset)
 
         dataset = torchvision.datasets.CIFAR10(root=params.data_root, train=is_train, download=True, transform=transform)
         dataset = IdxDataset(dataset)
@@ -80,6 +80,7 @@ def get_dataset(*, params, is_train, mask=None):
             dataset = MaskDataset(dataset, mask)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
         n_data = len(dataset)
+        params.num_classes = 10
 
         return dataloader, n_data
 

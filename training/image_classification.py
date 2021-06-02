@@ -3,17 +3,17 @@ import argparse
 import json
 import os
 
+import torch
+
 from models import build_model
 from datasets import get_dataset
-from utils.trainer import Trainer
+from utils.evaluator import Evaluator
 from utils.logger import create_logger
 from utils.misc import bool_flag
+from utils.trainer import Trainer
 
 
 def check_parameters(params):
-    if params.private:
-        assert params.privacy_epsilon is not None
-    
     assert params.dump_path is not None
     os.makedirs(params.dump_path, exist_ok=True)
 
@@ -35,7 +35,7 @@ def get_parser():
     parser.add_argument("--mask_path", type=str, required=True)
 
     # Model parameters
-    parser.add_argument("--architecture", choices=["lenet"], default="lenet")
+    parser.add_argument("--architecture", choices=["lenet", "smallnet"], default="lenet")
 
     # training parameters
     parser.add_argument("--batch_size", type=int, default=32)
@@ -67,7 +67,7 @@ def train(params, mask):
     trainer = Trainer(model, params, n_data=n_data)
     trainer.reload_checkpoint()
 
-    # evaluator = Evaluator(trainer, params)
+    evaluator = Evaluator(model, params)
 
     # evaluation
     # if params.eval_only:
@@ -94,9 +94,7 @@ def train(params, mask):
         logger.info("============ End of epoch %i ============" % trainer.epoch)
 
         # evaluate classification accuracy
-        # scores = evaluator.run_all_evals(trainer, evals=['classif'], data_loader=validloader)
-
-        scores = {}
+        scores = evaluator.run_all_evals(evals=['classif'], data_loader=validloader)
         for name, val in trainer.get_scores().items():
             scores[name] = val
 
@@ -118,4 +116,4 @@ if __name__ == '__main__':
     check_parameters(params)
 
     mask = torch.load(params.mask_path)
-    main(params)
+    train(params, mask)
