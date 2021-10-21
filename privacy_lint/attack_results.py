@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from typing improt Tuple
+
 import torch
 
 
@@ -18,7 +20,8 @@ class AttackResults:
 
         self.scores_train, self.scores_test = scores_train, scores_test
 
-    def _upsample(self, scores, delta):
+    @static_method
+    def _upsample(scores: torch.Tensor, delta: int) -> torch.Tensor:
         """
         Upsamples scores by fist shuffling it and concatenating it
         as many times as necessary to add delta samples.
@@ -31,7 +34,8 @@ class AttackResults:
 
         return torch.cat([shuffled_scores] * n_chunks)[: n + delta]
 
-    def _get_balanced_scores(self, scores_train, scores_test):
+    @static_method
+    def _get_balanced_scores(scores_train: torch.Tensor, scores_test: torch.Tensor) -> torch.Tensor:
         """
         Balances the train and test scores so that they have the same
         number of elements by upsampling the smallest set.
@@ -41,26 +45,34 @@ class AttackResults:
         n_test = len(scores_test)
         delta = n_train - n_test
         if delta > 0:
-            scores_test = self._upsample(scores_test, delta)
+            scores_test = AttackResults._upsample(scores_test, delta)
         else:
-            scores_train = self._upsample(scores_train, -delta)
+            scores_train = AttackResults._upsample(scores_train, -delta)
 
         return scores_train, scores_test
 
-    def balance(self):
+    def balance(self)->AttackResults:
         """
-        Returns AttackResults with balanced scores that hate the same number of elements.
+        Returns AttackResults with balanced scores that hate the same number of
+        elements by balancing the train and test scores so that they have the same
+        number of elements by upsampling the smallest set.
         """
 
-        balanced_scores_train, balanced_scores_test = self._get_balanced_scores(
-            self.scores_train, self.scores_test
-        )
-        return AttackResults(balanced_scores_train, balanced_scores_test)
+        n_train = len(scores_train)
+        n_test = len(scores_test)
+        delta = n_train - n_test
+        if delta > 0:
+            scores_test = AttackResults._upsample(scores_test, delta)
+        else:
+            scores_train = AttackResults._upsample(scores_train, -delta)
 
-    def group(self, group_size: int, num_groups: int):
+        return AttackResults(scores_train, scores_test)
+
+    def group(self, group_size: int, num_groups: int) -> AttackResults:
         """
-        TODO
+        Averages train and test scores over num_groups of size group_size.
         """
+
         p = torch.ones(self.scores_train.size(0)) / self.scores_train.size(0)
         group_train = torch.Tensor(
             [
@@ -79,7 +91,7 @@ class AttackResults:
 
         return AttackResults(scores_train=group_train, scores_test=group_test)
 
-    def _get_scores_and_labels_ordered(self):
+    def _get_scores_and_labels_ordered(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Sorts the scores from the highest to the lowest and returns
         the labels sorted by the scores.
@@ -98,7 +110,8 @@ class AttackResults:
         labels_ordered = labels[order]
         return labels_ordered, scores_ordered
 
-    def _get_area_under_curve(self, x, y):
+    @static_method
+    def _get_area_under_curve(self, x: torch.Tensor, y: torch.Tensor) -> float:
         """
         Computes the area under the parametric curve defined by (x, y).
 
@@ -112,7 +125,7 @@ class AttackResults:
         result = (dx * y[:-1]).sum() + (dy * dx).sum()
         return result.item()
 
-    def get_max_accuracy_threshold(self):
+    def get_max_accuracy_threshold(self) -> Tuple[float, float]:
         """
         Computes the score threshold that allows for maximum accuracy of the attack.
         All samples below this threshold will be classified as train and all samples
@@ -135,7 +148,7 @@ class AttackResults:
 
         return max_accuracy_threshold, max_accuracy
 
-    def get_accuracy(self, threshold):
+    def get_accuracy(self, threshold: float) -> float:
         """
         Given the maximum accuracy threshold, computes the accuracy of the attack.
         """
@@ -147,7 +160,7 @@ class AttackResults:
         accuracy = (n_true_positives + n_true_negatives) / n_samples
         return accuracy
 
-    def get_precision_recall(self):
+    def get_precision_recall(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Computes precision and recall, useful for plotting PR curves and
         computing mAP.
@@ -161,16 +174,16 @@ class AttackResults:
 
         return precision, recall
 
-    def get_map(self):
+    def get_map(self) -> float:
         """
         Computes the area under the PR curve.
         """
         precision, recall = self.get_precision_recall()
-        result = self._get_area_under_curve(recall, precision)
+        result = AttackResults._get_area_under_curve(recall, precision)
 
         return result
 
-    def get_tpr_fpr(self):
+    def get_tpr_fpr(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Computes true positive rate and true negative rate,, useful for plotting
         ROC curves and computing AUC.
@@ -185,11 +198,11 @@ class AttackResults:
         )
         return true_positive_rate, false_positive_rate
 
-    def get_auc(self):
+    def get_auc(self) -> float:
         """
         Computes the area under the ROC curve.
         """
 
         true_positive_rate, false_positive_rate = self.get_tpr_fpr()
-        result = self._get_area_under_curve(false_positive_rate, true_positive_rate)
+        result = AttackResults._get_area_under_curve(false_positive_rate, true_positive_rate)
         return result
