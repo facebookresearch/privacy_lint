@@ -33,8 +33,10 @@ def divide_data(n_data: int, split_config: dict = _default_split_config) -> dict
     splits["private/train"] = coarse_masks["private/train"]
     splits["private/heldout"] = coarse_masks["private/heldout"]
 
-    torch.save(splits, "data/splits.pth")
+    return splits
 
 if __name__ == "__main__":
     n_data = 50000
-    divide_data(n_data)
+    splits = divide_data(n_data)
+
+    torch.save(splits, "data/cifar_splits.pth")
