@@ -44,10 +44,10 @@ def convnet(num_classes):
     )
 
 
-def save_checkpoint(state, is_best, filename="checkpoint.tar"):
-    torch.save(state, filename)
+def save_checkpoint(state, is_best, directory):
+    torch.save(state, os.path.join(directory, "checkpoint.pth"))
     if is_best:
-        shutil.copyfile(filename, "model_best.pth.tar")
+        shutil.copyfile(os.path.join(directory, "checkpoint.pth"), os.path.join(directory, "model_best.pth"))
 
 
 def accuracy(preds, labels):
@@ -148,7 +148,7 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=int(args.sample_rate * len(train_dataset)),
+        batch_size=args.batch_size,
         num_workers=args.workers,
         pin_memory=True,
     )
@@ -158,7 +158,7 @@ def main():
     )
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=args.batch_size_test,
+        batch_size=args.batch_size,
         shuffle=False,
         num_workers=args.workers,
     )
@@ -186,7 +186,7 @@ def main():
     accuracy_per_epoch = []
     time_per_epoch = []
 
-    for epoch in range(args.start_epoch, args.epochs + 1):
+    for epoch in range(args.epochs):
         if args.lr_schedule == "cos":
             lr = args.lr * 0.5 * (1 + np.cos(np.pi * epoch / (args.epochs + 1)))
             for param_group in optimizer.param_groups:
@@ -211,7 +211,7 @@ def main():
                 "optimizer": optimizer.state_dict(),
             },
             is_best,
-            filename=args.checkpoint_file + ".tar",
+            directory=args.checkpoint_dir,
         )
 
     time_per_epoch_seconds = [t.total_seconds() for t in time_per_epoch]
@@ -243,29 +243,15 @@ def parse_args():
         metavar="N",
         help="number of total epochs to run",
     )
-    parser.add_argument(
-        "--start-epoch",
-        default=1,
-        type=int,
-        metavar="N",
-        help="manual epoch number (useful on restarts)",
-    )
+    
     parser.add_argument(
         "-b",
-        "--batch-size-test",
+        "--batch-size",
         default=256,
         type=int,
-        metavar="N",
-        help="mini-batch size for test dataset (default: 256), this is the total "
+        help="mini-batch size for test dataset, this is the total "
         "batch size of all GPUs on the current node when "
         "using Data Parallel or Distributed Data Parallel",
-    )
-    parser.add_argument(
-        "--sample-rate",
-        default=0.04,
-        type=float,
-        metavar="SR",
-        help="sample rate used for batch construction (default: 0.005)",
     )
     parser.add_argument(
         "--lr",
@@ -323,9 +309,9 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--checkpoint-file",
+        "--checkpoint-dir",
         type=str,
-        default="checkpoint",
+        default=".",
         help="path to save check points",
     )
     parser.add_argument(
