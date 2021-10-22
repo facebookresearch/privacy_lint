@@ -11,6 +11,9 @@ from tqdm import tqdm
 def _compute_grad_norm(
     model: nn.Module, dataloader: DataLoader, criterion: torch.nn.modules.loss._Loss
 ):
+    """
+    Computes the per-sample gradient norms given by the model over the dataloader.
+    """
     norms = []
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(device)
@@ -40,6 +43,13 @@ compute_grad_norm_mse = partial(
 
 
 class GradNormAttack:
+    """
+    Given a function to compute the gradient norms:
+        - Computes the gradient norms of the private model on both the private 
+          train and heldout sets
+        - Returns an AttackResults object to analyze the results
+    """
+
     def __init__(
         self,
         compute_grad_norm: Callable[

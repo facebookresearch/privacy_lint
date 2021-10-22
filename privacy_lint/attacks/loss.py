@@ -7,33 +7,35 @@ from privacy_lint.attack_results import AttackResults
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+@torch.no_grad()
+def compute_loss_cross_entropy(model: nn.Module, dataloader: DataLoader) -> torch.Tensor:
+    """
+    Computes the losses given by the model over the dataloader.
+    """
 
-def _compute_loss(
-    model: nn.Module, dataloader: DataLoader, criterion: torch.nn.modules.loss._Loss
-) -> torch.Tensor:
     losses = []
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    criterion=nn.CrossEntropyLoss(reduction="none")
     model.to(device)
 
-    with torch.no_grad():
-        for img, target in tqdm(dataloader):
-            img = img.to(device)
-            target = target.to(device)
-            outputs = model(img)
-            batch_losses = criterion(outputs, target)
-            batch_losses = torch.einsum("i...->i", batch_losses)
-            losses += batch_losses.tolist()
+    for img, target in tqdm(dataloader):
+        img = img.to(device)
+        target = target.to(device)
+        outputs = model(img)
+        batch_losses = criterion(outputs, target)
+        losses += batch_losses.tolist()
 
     return torch.Tensor(losses)
 
 
-compute_loss_cross_entropy = partial(
-    _compute_loss, criterion=nn.CrossEntropyLoss(reduction="none")
-)
-compute_loss_mse = partial(_compute_loss, criterion=nn.MSELoss(reduction="none"))
-
-
 class LossAttack:
+    """
+    Given a function to compute the loss:
+        - Computes the losses of the private model on both the private 
+          train and heldout sets
+        - Returns an AttackResults object to analyze the results
+    """
+
     def __init__(
         self,
         compute_loss: Callable[
