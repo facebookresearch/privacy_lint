@@ -14,7 +14,7 @@ def idx_to_mask(n_data, indices):
 
 def multiply_round(n_data: int, cfg: dict):
     """
-    Given a configuration {split: percentage}, return a configuration {split: n} such that 
+    Given a configuration {split: percentage}, return a configuration {split: n} such that
     the sum of all is equal to n_data
     """
     print(cfg)
@@ -27,7 +27,9 @@ def multiply_round(n_data: int, cfg: dict):
     return sizes
 
 
-def generate_subsets(mask: torch.Tensor, size_split: int, n_splits: int, prefix="split_"):
+def generate_subsets(
+    mask: torch.Tensor, size_split: int, n_splits: int, prefix="split_"
+):
     """
     size_split: number of samples in a split split
     n_splits: number of split splits
@@ -46,6 +48,7 @@ def generate_subsets(mask: torch.Tensor, size_split: int, n_splits: int, prefix=
         split_masks[f"{prefix}{i_split}"] = idx_to_mask(mask.shape[0], idx[idx_shadow])
 
     return split_masks
+
 
 def flatten(d: Union[dict, int]):
     if isinstance(d, dict):
@@ -75,7 +78,7 @@ def generate_splits(n_data: int, split_config: dict):
     masks = {}
     offset = 0
     for split, n_split in flat_config.items():
-        masks[split] = idx_to_mask(n_data, permutation[offset:offset + n_split])
+        masks[split] = idx_to_mask(n_data, permutation[offset : offset + n_split])
         offset += n_split
 
     return masks

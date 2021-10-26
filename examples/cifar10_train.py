@@ -20,9 +20,10 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torch.utils.tensorboard as tensorboard
 import torchvision.transforms as transforms
-from privacy_lint.dataset import MaskDataset
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
+
+from privacy_lint.dataset import MaskDataset
 
 
 def convnet(num_classes):
@@ -47,7 +48,10 @@ def convnet(num_classes):
 def save_checkpoint(state, is_best, directory):
     torch.save(state, os.path.join(directory, "checkpoint.pth"))
     if is_best:
-        shutil.copyfile(os.path.join(directory, "checkpoint.pth"), os.path.join(directory, "model_best.pth"))
+        shutil.copyfile(
+            os.path.join(directory, "checkpoint.pth"),
+            os.path.join(directory, "model_best.pth"),
+        )
 
 
 def accuracy(preds, labels):
@@ -243,7 +247,7 @@ def parse_args():
         metavar="N",
         help="number of total epochs to run",
     )
-    
+
     parser.add_argument(
         "-b",
         "--batch-size",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing improt Tuple
+from typing import Tuple
 
 import torch
 
@@ -20,7 +20,7 @@ class AttackResults:
 
         self.scores_train, self.scores_test = scores_train, scores_test
 
-    @static_method
+    @staticmethod
     def _upsample(scores: torch.Tensor, delta: int) -> torch.Tensor:
         """
         Upsamples scores by fist shuffling it and concatenating it
@@ -34,8 +34,10 @@ class AttackResults:
 
         return torch.cat([shuffled_scores] * n_chunks)[: n + delta]
 
-    @static_method
-    def _get_balanced_scores(scores_train: torch.Tensor, scores_test: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def _get_balanced_scores(
+        scores_train: torch.Tensor, scores_test: torch.Tensor
+    ) -> torch.Tensor:
         """
         Balances the train and test scores so that they have the same
         number of elements by upsampling the smallest set.
@@ -51,24 +53,24 @@ class AttackResults:
 
         return scores_train, scores_test
 
-    def balance(self)->AttackResults:
+    def balance(self):
         """
         Returns AttackResults with balanced scores that hate the same number of
         elements by balancing the train and test scores so that they have the same
         number of elements by upsampling the smallest set.
         """
 
-        n_train = len(scores_train)
-        n_test = len(scores_test)
+        n_train = len(self.scores_train)
+        n_test = len(self.scores_test)
         delta = n_train - n_test
         if delta > 0:
-            scores_test = AttackResults._upsample(scores_test, delta)
+            scores_test = AttackResults._upsample(self.scores_test, delta)
         else:
-            scores_train = AttackResults._upsample(scores_train, -delta)
+            scores_train = AttackResults._upsample(self.scores_train, -delta)
 
         return AttackResults(scores_train, scores_test)
 
-    def group(self, group_size: int, num_groups: int) -> AttackResults:
+    def group(self, group_size: int, num_groups: int):
         """
         Averages train and test scores over num_groups of size group_size.
         """
@@ -110,7 +112,7 @@ class AttackResults:
         labels_ordered = labels[order]
         return labels_ordered, scores_ordered
 
-    @static_method
+    @staticmethod
     def _get_area_under_curve(self, x: torch.Tensor, y: torch.Tensor) -> float:
         """
         Computes the area under the parametric curve defined by (x, y).
@@ -204,5 +206,7 @@ class AttackResults:
         """
 
         true_positive_rate, false_positive_rate = self.get_tpr_fpr()
-        result = AttackResults._get_area_under_curve(false_positive_rate, true_positive_rate)
+        result = AttackResults._get_area_under_curve(
+            false_positive_rate, true_positive_rate
+        )
         return result
