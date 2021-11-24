@@ -31,3 +31,6 @@ See `examples/*.ipynb` for examples of:
 - Loss attack on a mixture of gaussians in `Attack_GaussianClassification.ipynb`.
 - Gradient attack on a mixture of gaussians in `Attack_GaussianMeanEstimation.ipynb`.
 - A balanced/unbalanced attack on ImageNet in `Attack_Imagenet.ipynb`.
+
+## License
+This code is released under Apache 2.0, as found in the [LICENSE](https://github.com/fairinternal/privacy_lint/tree/main/LICENSE) file.
