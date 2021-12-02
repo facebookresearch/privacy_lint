@@ -9,10 +9,9 @@ import argparse
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from torchvision.datasets import CIFAR10
-
 from privacy_lint.attacks import ShadowModelsAttack
 from privacy_lint.dataset import MaskDataset
+from torchvision.datasets import CIFAR10
 
 
 def convnet(num_classes):

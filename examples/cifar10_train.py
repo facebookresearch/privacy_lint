@@ -20,10 +20,9 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torch.utils.tensorboard as tensorboard
 import torchvision.transforms as transforms
+from privacy_lint.dataset import MaskDataset
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
-
-from privacy_lint.dataset import MaskDataset
 
 
 def convnet(num_classes):
