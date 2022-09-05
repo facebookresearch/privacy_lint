@@ -8,8 +8,8 @@ def time_to_first_error(y_true, y_pred):
     return first_fp
 
 
-def min_exposed_dp(y_true, y_pred):
+def min_exposed_dp(y_true, y_pred, delta=1e-5):
+    # TODO: take into account delta to get (epsilon, delta) guarantee
     fpr, tpr, thresholds = metrics.roc_curve(y_true, y_pred)
     eps = (np.log(tpr + 1e-8) - np.log(fpr + 1e-8)).max()
-    # TODO: 1e-8 dramatically change the numbers; how to change this to get reasonable estimate?
     return eps

@@ -13,10 +13,7 @@ Dataset = torch.utils.data.Dataset
 
 
 DEFAULT_APPLY_FN = TorchApplier(conf_fn=neg_log_loss_conf)
-
-
-# TODO: parallelized model training
-# TODO: track attack metrics progressively as we have more models
+SIGMA_REG = 1e-30
 
 
 def random_mask(size: int, ones: int) -> np.ndarray:
@@ -78,9 +75,9 @@ class ScoreAttackResult:
 
     def member_scores(
         self,
-        online: bool = False,
-        individual_sigma: bool = False,
-        gaussian_likelihood: bool = False,
+        online: bool = True,
+        individual_sigma: bool = True,
+        gaussian_likelihood: bool = True,
     ):
         masks_in = self.masks
         masks_out = ~masks_in
@@ -89,69 +86,39 @@ class ScoreAttackResult:
             # just confs if no shadow models
             return self.confs
 
-        mu_out = agg_cols_masked(np.mean, self.confs, masks_out, axis=0)  # [len(dataset)] / [len(dataset), num_transforms]
+        # [len(dataset)] / [len(dataset), num_transforms]
+        mu_out = agg_cols_masked(np.mean, self.confs, masks_out, axis=0)
         if online:
             mu_in = agg_cols_masked(np.mean, self.confs, masks_in, axis=0)
 
-        univariate = len(mu_out.shape) == 1
+        if gaussian_likelihood:
+            sigma_out = (
+                agg_cols_masked(np.std, self.confs, masks_out, axis=0)
+                if individual_sigma else
+                np.std(self.confs[masks_out])
+            )
 
-        # TODO: simplify this
-        if univariate:
-            if gaussian_likelihood:
-                sigma_out = (
-                    agg_cols_masked(np.std, self.confs, masks_out)
-                    if individual_sigma else np.std(self.confs[masks_out])
+            if online:
+                sigma_in = (
+                    agg_cols_masked(np.std, self.confs, masks_in, axis=0)
+                    if individual_sigma else
+                    np.std(self.confs[masks_in])
                 )
-                if online:
-                    sigma_in = (
-                        agg_cols_masked(np.std, self.confs, masks_in)
-                        if individual_sigma else np.std(self.confs[masks_in])
-                    )
-                    return (
-                        stats.norm(loc=mu_in, scale=sigma_in).logpdf(self.confs_target)
-                        - stats.norm(loc=mu_out, scale=sigma_out).logpdf(self.confs_target)
-                    )
-                else:
-                    return stats.norm(loc=mu_out, scale=sigma_out).cdf(self.confs_target)
+                scores = (
+                    stats.norm.logpdf(self.confs_target, loc=mu_out, scale=sigma_out + SIGMA_REG)
+                    - stats.norm.logpdf(self.confs_target, loc=mu_in, scale=sigma_in + SIGMA_REG)
+                )
             else:
-                if online:
-                    return self.confs_target - (mu_in + mu_out) / 2
-                else:
-                    return self.confs_target - mu_out
+                scores = stats.norm.logpdf(self.confs_target, loc=mu_out, scale=sigma_out + SIGMA_REG)
         else:
-            if gaussian_likelihood:
-                # Multivariate Gaussian
-                sigma_out = (
-                    np.stack([
-                        np.cov(self.confs[masks_out[:, i], i], rowvar=False)
-                        for i in range(masks_out.shape[1])
-                        if masks_out[:, i].sum() > 1
-                    ], axis=0)
-                    if individual_sigma else np.cov(self.confs[masks_out], rowvar=False)
-                )
-                if online:
-                    sigma_in = (
-                        np.stack([
-                            np.cov(self.confs[masks_in[:, i], i], rowvar=False)
-                            for i in range(masks_in.shape[1])
-                            if masks_in[:, i].sum() > 1
-                        ], axis=0)
-                        if individual_sigma else np.cov(self.confs[masks_in], rowvar=False)
-                    )
-                    return np.array([
-                        stats.multivariate_normal(mean=mu_in[i, :], scale=sigma_in[i, :]).logpdf(self.confs_target[i, :])
-                        - stats.multivariate_normal(loc=mu_out[i, :], scale=sigma_out[i, :]).logpdf(self.confs_target[i, :])
-                        for i in range(self.confs_target.shape[0])
-                    ])
-                else:
-                    raise RuntimeError("WTF?")
+            if online:
+                scores = (mu_in + mu_out) / 2 - self.confs_target
             else:
-                # Euclidean norm
-                if online:
-                    return np.linalg.norm(self.confs_target - (mu_in + mu_out) / 2, axis=1)
-                else:
-                    return np.linalg.norm(self.confs_target - mu_out, axis=1)
+                scores = mu_out - self.confs_target
 
+        if len(scores.shape) > 1:
+            scores = scores.mean(1)
+        return scores
 
 
 class ScoreAttack:

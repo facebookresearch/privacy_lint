@@ -10,7 +10,6 @@ from scipy import interpolate
 from sklearn import metrics
 from torch import nn, optim
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import transforms, Compose
 
